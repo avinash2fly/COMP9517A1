@@ -29,10 +29,13 @@ if not results.input:
 if not results.output:
     print('Required ouput image path')
     exit(1)
-print(results)
-exit(0);
+# print(results)
+# exit(0);
 img = cv.imread(results.input,0)
+print(img.shape)
+#gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 blur = cv.GaussianBlur(img,(5,5),0)
+# blur = cv.medianBlur(img,5)
 img=blur
 # find normalized_histogram, and its cumulative distribution function
 hist = cv.calcHist([img],[0],None,[256],[0,256])
