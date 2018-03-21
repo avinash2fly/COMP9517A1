@@ -1,9 +1,9 @@
 from __future__ import print_function
 import cv2 as cv
 import numpy as np
-import math
 from optparse import OptionParser
 import os
+import math
 
 # You shouldn't use any of the following OpenCV library functions:
 # threshold
@@ -47,7 +47,11 @@ def otsu_threshold(img):
         for j in range(0, len(img[i])):
             if img[i][j] >= thresh:
                 new_image[i][j] = 255
-    return new_image,thresh
+
+    kernel = np.ones((new_image.shape[0], new_image.shape[1]), np.uint8)
+    mask = cv.inRange(new_image, thresh, 255)
+    return cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel),thresh
+    # return new_image,thresh
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Example with long option names')
@@ -92,3 +96,6 @@ if __name__ == '__main__':
             # cv.imwrite("image.jpg", roi_gray)
     print(finalData.shape)
     cv.imwrite(results.output, finalData)
+    # kernel = np.ones((finalData.shape[0], finalData.shape[1]), np.uint8)
+    # data123 = cv.morphologyEx(finalData, cv.MORPH_OPEN, kernel)
+    # cv.imwrite(results.output, data123)
