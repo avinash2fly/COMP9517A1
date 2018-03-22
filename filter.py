@@ -1,9 +1,9 @@
 from __future__ import print_function
 import cv2 as cv
 import numpy as np
+import math
 from optparse import OptionParser
 import os
-import math
 
 # You shouldn't use any of the following OpenCV library functions:
 # threshold
@@ -18,6 +18,35 @@ import argparse
 
 
 
+lastThres = []
+meanImg=0
+
+def only_otsu_threshold(img):
+    fn_min = np.inf
+    thresh = -1
+    new_image = np.zeros((img.shape[0], img.shape[1]), dtype=img.dtype)
+    hist = cv.calcHist([img], [0], None, [256], [0, 256])
+    hist_norm = hist.ravel()/hist.max()
+    Q = hist_norm.cumsum()
+    bins = np.arange(256)
+    for i in range(1, 256):
+        p1, p2 = np.hsplit(hist_norm, [i])  # probabilities
+        q1, q2 = Q[i], Q[255] - Q[i]  # cum sum of classes
+        if q1 == 0:
+            q1 = 0.00000001
+        if q2 == 0:
+            q2 = 0.00000001
+        b1, b2 = np.hsplit(bins, [i])  # weights
+        # finding means and variances
+        m1, m2 = np.sum(p1 * b1) / q1, np.sum(p2 * b2) / q2
+        v1, v2 = np.sum(((b1 - m1) ** 2) * p1) / q1, np.sum(((b2 - m2) ** 2) * p2) / q2
+        # calculates the minimization function
+        fn = v1 * q1 + v2 * q2
+        if fn < fn_min:
+            fn_min = fn
+            thresh = i
+
+    return thresh
 
 def otsu_threshold(img):
     fn_min = np.inf
@@ -43,15 +72,22 @@ def otsu_threshold(img):
         if fn < fn_min:
             fn_min = fn
             thresh = i
+    # len(img[img == 0]) > 0.9 * img.size
+    if len(img[img == 0]) > 0.9 * img.size or (img.max()-img.min())<20:
+            thresh = meanImg
     for i in range(0, len(img)):
         for j in range(0, len(img[i])):
             if img[i][j] >= thresh:
                 new_image[i][j] = 255
-
-    kernel = np.ones((new_image.shape[0], new_image.shape[1]), np.uint8)
+    kernel = np.ones((5, 5), np.uint64)
     mask = cv.inRange(new_image, thresh, 255)
     return cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel),thresh
     # return new_image,thresh
+
+# def filterImage(img):
+#     kernel = np.ones((5,5), np.uint64)
+#     mask = cv.inRange(new_image, meanImg, 255)
+#     return cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel),meanImg
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Example with long option names')
@@ -78,11 +114,14 @@ if __name__ == '__main__':
     grid = int(math.sqrt(int(results.input[1])))
     # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     finalData = np.zeros((0, 0), dtype=img.dtype)
+    meanImg = only_otsu_threshold(img)
+    # new_image, thres = otsu_threshold(img,False)
     for y in range(0,height,grid):
         tempData=np.zeros((0, 0), dtype=img.dtype)
         for x in range(0,width,grid):
             roi_gray = img[y:y + grid, x:x + grid]
             new_image,thres = otsu_threshold(roi_gray)
+            lastThres.append(thres)
             if tempData.shape[0] is 0:
                 tempData = new_image
             else:
@@ -96,6 +135,3 @@ if __name__ == '__main__':
             # cv.imwrite("image.jpg", roi_gray)
     print(finalData.shape)
     cv.imwrite(results.output, finalData)
-    # kernel = np.ones((finalData.shape[0], finalData.shape[1]), np.uint8)
-    # data123 = cv.morphologyEx(finalData, cv.MORPH_OPEN, kernel)
-    # cv.imwrite(results.output, data123)
